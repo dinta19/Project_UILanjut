@@ -12,10 +12,14 @@ import { RouterView, RouterLink } from 'vue-router'
         <router-link to="/">Gatherly Organizer</router-link>
       </div>
       <nav class="rail-nav">
-        <router-link to="/dashboard" class="rail-link active">Overview</router-link>
-        <a href="#" class="rail-link">My Events</a>
-        <a href="#" class="rail-link">Attendees</a>
-        <a href="#" class="rail-link">QR Check-in</a>
+        <router-link to="/dashboard" class="rail-link" exact-active-class="active">
+          <span class="rail-icon">📊</span>
+          <span class="rail-label">Dashboard</span>
+        </router-link>
+        <router-link to="/dashboard/events" class="rail-link" active-class="active">
+          <span class="rail-icon">⚙️</span>
+          <span class="rail-label">Event Management</span>
+        </router-link>
       </nav>
       <div class="rail-footer">
         <router-link to="/" class="rail-link">&larr; Back to Public</router-link>
