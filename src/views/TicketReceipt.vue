@@ -8,14 +8,16 @@ const route = useRoute();
 const router = useRouter();
 const { userRegistrations, cancelRegistration, getEventById, events } = useEvents();
 
-const eventId = computed(() => Number(route.params.id));
+const eventId = computed(() => String(route.params.id || ''));
 
 // MENGAMBIL DATA TIKET JIKA EVENT MASIH ADA DI SISTEM
 const activeTicket = computed(() => {
   if (!eventId.value) return null;
-  const eventExists = events.value.some(e => e.id === eventId.value);
+  const eventExists = events.value.some((event) => String(event.id) === eventId.value);
   if (!eventExists) return null;
-  return userRegistrations.value.find(r => r.eventId === eventId.value);
+  return userRegistrations.value.find(
+    (registration) => String(registration.eventId) === eventId.value
+  );
 });
 
 // MEMERIKSA STATUS SELESAI EVENT SECARA REAKTIF

@@ -1,43 +1,71 @@
+<script setup>
+import AppIcon from "@/components/ui/AppIcon.vue";
+defineProps({
+  modelValue: { type: String, default: "" },
+  placeholder: { type: String, default: "Search by event name or location…" },
+  label: { type: String, default: "Search events by title or location" },
+});
+defineEmits(["update:modelValue"]);
+</script>
 <template>
   <div class="search-bar">
-    <input
-      type="text"
+    <AppIcon name="search" :size="19" /><input
+      type="search"
       :value="modelValue"
       @input="$emit('update:modelValue', $event.target.value)"
-      placeholder="Search events by title or location..."
-      class="search-input"
-    />
+      :placeholder="placeholder"
+      :aria-label="label"
+    /><button
+      v-if="modelValue"
+      aria-label="Clear search"
+      @click="$emit('update:modelValue', '')"
+    >
+      <AppIcon name="close" :size="16" />
+    </button>
   </div>
 </template>
-
-<script setup>
-defineProps({
-  modelValue: {
-    type: String,
-    default: ''
-  }
-});
-defineEmits(['update:modelValue']);
-</script>
-
 <style scoped>
 .search-bar {
+  display: flex;
+  align-items: center;
+  gap: 11px;
   width: 100%;
-  max-width: 500px;
-  margin-bottom: var(--space-4);
-}
-
-.search-input {
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
+  min-height: 49px;
+  padding: 0 15px;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 1rem;
-  outline: none;
-  transition: border-color 0.2s;
+  background: #fff;
+  border-radius: 11px;
+  color: #8a859c;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
-
-.search-input:focus {
+.search-bar:focus-within {
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+input {
+  width: 100%;
+  min-width: 0;
+  padding: 13px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 13px;
+}
+input::placeholder {
+  color: #96919f;
+}
+input::-webkit-search-cancel-button {
+  display: none;
+}
+button {
+  padding: 4px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
 }
 </style>

@@ -1,136 +1,180 @@
+<script setup>
+import AppIcon from "@/components/ui/AppIcon.vue";
+defineProps({
+  event: { type: Object, required: true },
+  isRegistered: { type: Boolean, default: false },
+});
+defineEmits(["view-detail"]);
+const icons = {
+  Workshop: "layers",
+  Meetup: "users",
+  Conference: "globe",
+  Competition: "grid",
+  Seminar: "calendar",
+};
+</script>
 <template>
-  <AppCard class="event-card-wrapper">
+  <article class="event-card">
+    <div class="event-art" :class="event.cat.toLowerCase()">
+      <span class="art-ring"></span
+      ><AppIcon :name="icons[event.cat] || 'calendar'" :size="65" /><span
+        class="event-category"
+        >{{ event.cat }}</span
+      ><span v-if="isRegistered" class="badge-registered"
+        ><AppIcon name="check" :size="12" />Registered</span
+      >
+    </div>
     <div class="event-body">
-      <div class="event-meta">
-        <div class="meta-left">
-          <span class="event-date">{{ event.date }}</span>
-          <span v-if="isRegistered" class="badge-registered">Registered</span>
-        </div>
-        <span class="event-category">{{ event.cat }}</span>
-      </div>
-
-      <h3 class="event-title">{{ event.title }}</h3>
-      <p class="event-loc">{{ event.loc }}</p>
+      <span class="event-date"
+        ><AppIcon name="calendar" :size="14" />{{ event.date }}</span
+      >
+      <h3>{{ event.title }}</h3>
+      <p class="event-loc"><AppIcon name="pin" :size="14" />{{ event.loc }}</p>
       <p class="event-desc">{{ event.desc }}</p>
-
       <div class="card-footer">
-        <button class="btn-link" @click="$emit('view-detail', event.id)">
-          View Event Details &rarr;
+        <span>{{
+          event.quota > 0 ? event.quota + " spots available" : "Fully booked"
+        }}</span
+        ><button @click="$emit('view-detail', event.id)">
+          View event <AppIcon name="arrow" :size="16" />
         </button>
       </div>
     </div>
-  </AppCard>
+  </article>
 </template>
-
-<script setup>
-import AppCard from '@/components/ui/AppCard.vue';
-
-defineProps({
-  event: {
-    type: Object,
-    required: true
-  },
-  isRegistered: {
-    type: Boolean,
-    default: false
-  }
-});
-defineEmits(['view-detail']);
-</script>
-
 <style scoped>
-.event-card-wrapper {
+.event-card {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  transition:
+    transform 0.25s,
+    box-shadow 0.25s;
 }
-
+.event-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+}
+.event-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1.9;
+  background: #ede8f7;
+  color: #9a82ce;
+  overflow: hidden;
+}
+.meetup {
+  background: #f7ede4;
+  color: #bf9b7d;
+}
+.conference {
+  background: #e8eef7;
+  color: #88a0c4;
+}
+.competition {
+  background: #e9f2ed;
+  color: #8aa794;
+}
+.seminar {
+  background: #f7eaf0;
+  color: #bd92a7;
+}
+.art-ring {
+  position: absolute;
+  width: 70%;
+  height: 85%;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  transform: rotate(-30deg);
+  opacity: 0.25;
+}
+.event-category {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: #fff;
+  color: var(--text-main);
+  padding: 4px 10px;
+  font-size: 10px;
+  border-radius: 5px;
+}
+.badge-registered {
+  position: absolute;
+  right: 15px;
+  top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f2fbf4;
+  color: #4c7b61;
+  font-size: 9px;
+  padding: 4px 7px;
+  border-radius: 5px;
+}
 .event-body {
-  padding: var(--space-6);
   display: flex;
+  flex: 1;
   flex-direction: column;
-  height: 100%;
+  padding: 22px;
 }
-
-.event-meta {
+.event-date {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--primary);
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+h3 {
+  font-size: 20px;
+  margin: 0 0 11px;
+  overflow-wrap: anywhere;
+}
+.event-loc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0 0 13px;
+}
+.event-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.8;
+  margin-bottom: 22px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-footer {
   display: flex;
   justify-content: space-between;
+  gap: 10px;
   align-items: center;
-  margin-bottom: var(--space-4);
-  gap: var(--space-2);
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+  margin-top: auto;
 }
-
-.meta-left {
+.card-footer > span {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.card-footer button {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.event-date {
-  background: rgba(102, 68, 255, 0.1);
-  color: var(--primary);
-  padding: var(--space-1) var(--space-2);
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-.badge-registered {
-  background: #dbeafe;
-  color: #1d4ed8;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.event-category {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-.event-title {
-  margin-bottom: var(--space-2);
-  font-size: 1.4rem;
-  color: var(--text-main);
-}
-
-.event-loc {
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  margin-bottom: var(--space-4);
-}
-
-.event-desc {
-  color: var(--text-muted);
-  line-height: 1.6;
-  font-size: 0.95rem;
-  margin-bottom: var(--space-6);
-  flex-grow: 1;
-}
-
-.card-footer {
-  border-top: 1px solid var(--border-color);
-  padding-top: var(--space-4);
-}
-
-.btn-link {
+  gap: 7px;
   background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-main);
-  font-weight: 600;
-  text-decoration: none;
-  font-size: 1rem;
+  border: 0;
   padding: 0;
-}
-
-.btn-link:hover {
   color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
 }
 </style>

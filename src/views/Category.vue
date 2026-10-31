@@ -1,69 +1,171 @@
-<template>
-  <div class="category-page">
-    <h2 class="section-title">Explore by Category</h2>
-    <div class="category-grid">
-      <div class="category-card" v-for="(cat, index) in categories" :key="index">
-        <div class="cat-icon">{{ cat.icon }}</div>
-        <h3>{{ cat.name }}</h3>
-        <p>{{ cat.count }} Events</p>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
+import { useEvents } from "@/composables/useEvents";
+import AppIcon from "@/components/ui/AppIcon.vue";
+const { activeEvents } = useEvents();
 const categories = [
-  { name: 'Music & Concerts', icon: '🎵', count: 24 },
-  { name: 'Technology', icon: '💻', count: 18 },
-  { name: 'Art & Design', icon: '🎨', count: 12 },
-  { name: 'Business', icon: '💼', count: 30 },
-  { name: 'Health & Wellness', icon: '🏃‍♂️', count: 15 },
-  { name: 'Food & Drink', icon: '🍕', count: 22 },
-]
+  {
+    name: "Workshops",
+    value: "Workshop",
+    icon: "layers",
+    desc: "Learn something new, one hands-on session at a time.",
+    tone: "lilac",
+  },
+  {
+    name: "Meetups",
+    value: "Meetup",
+    icon: "users",
+    desc: "Meet the people who share your kind of curiosity.",
+    tone: "peach",
+  },
+  {
+    name: "Conferences",
+    value: "Conference",
+    icon: "globe",
+    desc: "Big ideas and fresh perspectives in one place.",
+    tone: "blue",
+  },
+  {
+    name: "Competitions",
+    value: "Competition",
+    icon: "grid",
+    desc: "Put your skills to work and enjoy the challenge.",
+    tone: "green",
+  },
+  {
+    name: "Seminars",
+    value: "Seminar",
+    icon: "calendar",
+    desc: "Make space for a new way of thinking.",
+    tone: "rose",
+  },
+];
 </script>
-
+<template>
+  <section class="category-page">
+    <header>
+      <span class="eyebrow">A PLACE FOR EVERY INTEREST</span>
+      <h1>Follow your curiosity.</h1>
+      <p>Start with what you love. See where it takes you.</p>
+    </header>
+    <div class="category-grid">
+      <router-link
+        v-for="cat in categories"
+        :key="cat.value"
+        :to="{ path: '/browse/events', query: { category: cat.value } }"
+        class="category-card"
+        ><span class="category-icon" :class="cat.tone"
+          ><AppIcon :name="cat.icon" :size="30"
+        /></span>
+        <h2>{{ cat.name }}</h2>
+        <p>{{ cat.desc }}</p>
+        <div>
+          <span
+            >{{
+              activeEvents.filter((event) => event.cat === cat.value).length
+            }}
+            events</span
+          ><AppIcon name="diagonal" :size="18" /></div
+      ></router-link>
+    </div>
+  </section>
+</template>
 <style scoped>
-.section-title {
-  font-size: 1.8rem;
-  color: #1c1948;
-  margin-bottom: 2rem;
+header {
+  margin: 8px 0 32px;
 }
-
+h1 {
+  font-size: clamp(32px, 4vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  margin: 10px 0 12px;
+}
+header p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
 .category-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
 }
-
 .category-card {
+  display: flex;
+  flex-direction: column;
+  padding: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: 17px;
   background: white;
-  padding: 2rem;
-  border-radius: 16px;
-  text-align: center;
-  border: 1px solid #eee;
-  transition: all 0.3s ease;
-  cursor: pointer;
+  color: var(--text-main);
+  text-decoration: none;
 }
-
 .category-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-  border-color: #6644ff;
+  transform: translateY(-4px);
+  border-color: #cfc5ea;
+  box-shadow: var(--shadow);
 }
-
-.cat-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+.category-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 17px;
+  margin-bottom: 24px;
 }
-
-.category-card h3 {
-  color: #1c1948;
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
+.category-card h2 {
+  font-size: 22px;
+  margin-bottom: 12px;
 }
-
 .category-card p {
-  color: #888;
-  font-size: 0.9rem;
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 250px;
+  flex: 1;
+  margin-bottom: 25px;
+}
+.category-card > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--primary);
+  font-size: 11px;
+  padding-top: 17px;
+  border-top: 1px solid var(--border-color);
+}
+.lilac {
+  background: #efebfa;
+  color: #7860bc;
+}
+.peach {
+  background: #faf0e6;
+  color: #b4804c;
+}
+.blue {
+  background: #eaf0f9;
+  color: #6483b8;
+}
+.green {
+  background: #eaf3ed;
+  color: #658d73;
+}
+.rose {
+  background: #faedf0;
+  color: #b9758d;
+}
+@media (max-width: 850px) {
+  .category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 500px) {
+  .category-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 15px;
+  }
+  .category-card {
+    padding: 23px;
+  }
+  .category-icon {
+    margin-bottom: 18px;
+  }
 }
 </style>
