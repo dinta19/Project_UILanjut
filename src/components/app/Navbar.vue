@@ -1,413 +1,342 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
-
-const isScrolled = ref(false)
-const route = useRoute()
-
-const menus = [
-  { name: 'Home', path: '/' },
-  { name: 'About', path: '/about' },
+import { ref, watch } from "vue";
+import { useRoute } from "vue-router";
+import AppIcon from "@/components/ui/AppIcon.vue";
+const route = useRoute();
+const menuOpen = ref(false);
+const browseOpen = ref(false);
+const browseLinks = [
   {
-    name: 'Browse',
-    path: '/browse',
-    children: [
-      {
-        name: 'Event List',
-        path: '/browse/events',
-      },
-      { name: 'Category', path: '/browse/category' },
-      { name: 'Your Events', path: '/browse/your-events' },
-    ],
+    name: "Discover events",
+    path: "/browse/events",
+    icon: "calendar",
+    desc: "Find your next experience",
   },
-  { name: 'Contact', path: '/contact' },
-  { name: 'Organizer Dashboard', path: '/dashboard' },
-]
-
-const handleScroll = () => {
-  isScrolled.value = window.scrollY > 10
-}
-
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
+  {
+    name: "Global community",
+    path: "/browse/public-api",
+    icon: "globe",
+    desc: "Ideas from around the world",
+  },
+  {
+    name: "Categories",
+    path: "/browse/category",
+    icon: "grid",
+    desc: "Explore your interests",
+  },
+  {
+    name: "Your tickets",
+    path: "/browse/your-events",
+    icon: "ticket",
+    desc: "All your plans, in one place",
+  },
+];
+watch(
+  () => route.path,
+  () => {
+    menuOpen.value = false;
+    browseOpen.value = false;
+  },
+);
 </script>
-
 <template>
-  <nav class="navbar" :class="{ scrolled: isScrolled }">
-    <div class="navbar-container">
-      <router-link to="/" class="logo">
-        <svg
-          width="28"
-          height="32"
-          viewBox="0 0 24 28"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          class="logo-icon"
-        >
-          <path d="M12 0L22.3923 6V18L12 24L1.6077 18V6L12 0Z" fill="white" />
-          <path
-            d="M15 9.5 C15 9.5 14 8 12 8 C9.5 8 8 10 8 12.5 C8 15 9.5 17 12 17 C14 17 15 16 15.5 14.5 V 12.5 H 12.5"
-            stroke="#1A1643"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-        <span class="logo-text">Gatherly</span>
-      </router-link>
-
-      <ul class="nav-menu">
-        <li class="nav-item" v-for="menu in menus" :key="menu.name">
-          <router-link
-            :to="menu.path"
-            class="nav-link"
-            :class="{
-              active:
-                route.path === menu.path || (menu.path !== '/' && route.path.startsWith(menu.path)),
-            }"
+  <header
+    class="navbar"
+    @keydown.esc="
+      menuOpen = false;
+      browseOpen = false;
+    "
+  >
+    <nav class="navbar-container" aria-label="Main navigation">
+      <router-link to="/" class="logo" aria-label="Gatherly home"
+        ><span class="brand-mark">g<span></span></span
+        ><span>gatherly<span class="brand-period">.</span></span></router-link
+      >
+      <div
+        id="main-navigation"
+        class="nav-content"
+        :class="{ 'is-open': menuOpen }"
+      >
+        <div class="nav-links">
+          <router-link to="/" class="nav-link" exact-active-class="active"
+            >Home</router-link
           >
-            {{ menu.name }}
-            <svg
-              v-if="menu.children"
-              class="dropdown-indicator"
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+          <div class="browse-nav" @mouseleave="browseOpen = false">
+            <button
+              class="nav-link"
+              :class="{ active: route.path.startsWith('/browse') }"
+              :aria-expanded="browseOpen"
+              aria-controls="browse-navigation"
+              @click="browseOpen = !browseOpen"
             >
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </router-link>
-
-          <!-- First Level Dropdown -->
-          <ul v-if="menu.children" class="dropdown-menu">
-            <li v-for="child in menu.children" :key="child.name" class="dropdown-item">
-              <router-link :to="child.path" class="dropdown-link">
-                {{ child.name }}
-                <svg
-                  v-if="child.children"
-                  class="submenu-indicator"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </router-link>
-
-              <!-- Second Level Dropdown (Submenu) -->
-              <ul v-if="child.children" class="submenu">
-                <li v-for="subchild in child.children" :key="subchild.name" class="submenu-item">
-                  <router-link :to="subchild.path" class="dropdown-link">
-                    {{ subchild.name }}
-                  </router-link>
-                </li>
-              </ul>
-            </li>
-          </ul>
-        </li>
-      </ul>
-
-      <div class="nav-right">
-        <div class="lang-selector">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+              Explore <AppIcon name="chevron" :size="13" />
+            </button>
+            <div v-if="browseOpen" id="browse-navigation" class="dropdown-menu">
+              <router-link
+                v-for="link in browseLinks"
+                :key="link.path"
+                :to="link.path"
+                class="dropdown-link"
+                ><span class="dropdown-icon"
+                  ><AppIcon :name="link.icon" :size="19" /></span
+                ><span
+                  ><strong>{{ link.name }}</strong
+                  ><small>{{ link.desc }}</small></span
+                ><AppIcon name="arrow" :size="15"
+              /></router-link>
+            </div>
+          </div>
+          <router-link to="/about" class="nav-link" active-class="active"
+            >About us</router-link
           >
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="2" y1="12" x2="22" y2="12"></line>
-            <path
-              d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
-            ></path>
-          </svg>
-          <span class="lang-text">EN</span>
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="chevron"
+          <router-link to="/contact" class="nav-link" active-class="active"
+            >Contact</router-link
           >
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
         </div>
-
-        <button class="hamburger-btn">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="4" y1="12" x2="20" y2="12"></line>
-            <line x1="4" y1="6" x2="20" y2="6"></line>
-            <line x1="4" y1="18" x2="20" y2="18"></line>
-          </svg>
-        </button>
+        <div class="nav-actions">
+          <router-link to="/browse/your-events" class="my-tickets"
+            ><AppIcon name="ticket" :size="18" />My tickets</router-link
+          ><router-link to="/dashboard" class="button-primary organizer-link"
+            >Create an event <AppIcon name="diagonal" :size="16"
+          /></router-link>
+        </div>
       </div>
-    </div>
-  </nav>
+      <button
+        class="mobile-toggle"
+        :aria-expanded="menuOpen"
+        aria-controls="main-navigation"
+        :aria-label="menuOpen ? 'Close navigation' : 'Open navigation'"
+        @click="menuOpen = !menuOpen"
+      >
+        <AppIcon :name="menuOpen ? 'close' : 'menu'" />
+      </button>
+    </nav>
+  </header>
 </template>
-
 <style scoped>
-/* NAVBAR FULL-WIDTH menyatu dengan bagian atas layar */
 .navbar {
-  width: 100%;
-  background: var(--nav-bg, #1c1948);
-  border-bottom: 1px solid var(--nav-border, #333);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   position: sticky;
   top: 0;
-  z-index: 999;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 30;
+  background: rgb(255 255 255 / 96%);
+  border-bottom: 1px solid var(--border-color);
+  backdrop-filter: blur(16px);
 }
 .navbar-container {
+  max-width: 1280px;
+  min-height: 84px;
+  margin: auto;
+  padding: 0 40px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 0.85rem 2rem;
-}
-.navbar.scrolled {
-  background: rgba(28, 25, 72, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  gap: 62px;
 }
 .logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 10px;
+  color: var(--text-main);
   text-decoration: none;
-  color: var(--text-white, #fff);
-  padding-right: 2rem;
-  transition: transform 0.3s ease;
+  font-family: "Manrope", sans-serif;
+  font-size: 25px;
+  letter-spacing: -1px;
+  font-weight: 800;
 }
-.logo:hover {
-  transform: translateY(-2px);
+.brand-period {
+  color: var(--primary);
 }
-.logo-icon {
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.logo:hover .logo-icon {
-  transform: rotate(15deg) scale(1.1);
-}
-.logo-text {
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-.nav-menu {
-  display: flex;
-  align-items: center;
-  gap: 2.5rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  flex: 1;
-  justify-content: center;
-}
-.nav-item {
+.brand-mark {
   position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 37px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 11px 11px 11px 3px;
+  font-size: 28px;
+  line-height: 1;
+  padding-bottom: 5px;
+}
+.brand-mark span {
+  width: 5px;
+  height: 5px;
+  background: #c8bcff;
+  border-radius: 50%;
+  position: absolute;
+  top: 7px;
+  right: 6px;
+}
+.nav-content {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+.nav-links,
+.nav-actions {
   display: flex;
   align-items: center;
-  height: 100%;
-  padding: 1rem 0; /* Memberi ruang hover */
+  gap: 24px;
 }
 .nav-link {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 10px 0;
+  color: var(--text-muted);
+  font-size: 13px;
   text-decoration: none;
-  color: var(--text-white, #fff);
-  font-size: 0.95rem;
   font-weight: 500;
-  padding: 0.5rem 1.25rem;
-  border-radius: 10px;
-  transition: all 0.3s ease;
+}
+.nav-link.active,
+.nav-link:hover {
+  color: var(--primary);
 }
 .nav-link.active {
-  background-color: var(--primary, #6644ff);
-  font-weight: 600;
-  box-shadow: 0 4px 15px rgba(102, 68, 255, 0.3);
+  font-weight: 700;
 }
-.nav-link.active:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 68, 255, 0.5);
+.browse-nav {
+  position: relative;
 }
-.nav-link:not(.active):hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-.dropdown-indicator {
-  transition: transform 0.3s ease;
-}
-.nav-item:hover .dropdown-indicator {
-  transform: rotate(180deg);
-}
-/* ==================================
-DROPDOWN & SUBMENU STYLES
-Inspired by user reference image
-================================== */
 .dropdown-menu {
-  display: none; /* diubah jadi block saat hover */
   position: absolute;
   top: 100%;
-  left: 0;
-  background-color: #d8d8d8; /* warna abu seperti referensi */
-  min-width: 200px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-}
-/* Tampilkan dropdown level 1 saat nav-item di-hover */
-.nav-item:hover .dropdown-menu {
-  display: block;
-  animation: fadeIn 0.2s ease-out;
-}
-.dropdown-item {
-  position: relative; /* relative untuk submenu absolut */
+  left: -20px;
+  width: 310px;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 16px 48px rgb(38 35 61 / 12%);
+  padding: 8px;
+  border-radius: 16px;
 }
 .dropdown-link {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
   text-decoration: none;
-  color: #333; /* text gelap */
-  font-size: 0.95rem;
-  transition:
-    background-color 0.2s,
-    color 0.2s;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
 }
 .dropdown-link:hover {
-  background-color: #c4c4c4; /* efek hover lebih gelap sedikit */
-  color: #000;
+  background: var(--bg-gray);
 }
-/* Hilangkan border bawah pada item terakhir */
-.dropdown-item:last-child .dropdown-link {
-  border-bottom: none;
+.dropdown-icon {
+  display: grid;
+  place-items: center;
+  width: 37px;
+  height: 37px;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  color: var(--primary);
 }
-/* Submenu (Level 2) */
-.submenu {
-  display: none;
-  position: absolute;
-  top: 0;
-  left: 100%;
-  background-color: #d8d8d8;
-  min-width: 220px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-}
-/* Tampilkan submenu level 2 saat dropdown-item di-hover */
-.dropdown-item:hover .submenu {
+.dropdown-link strong {
   display: block;
-  animation: fadeIn 0.2s ease-out;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-/* ==================================
-RIGHT SECTION
-================================== */
-.nav-right {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-.lang-selector {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-white, #fff);
-  font-size: 0.9rem;
+  font-size: 13px;
   font-weight: 600;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: all 0.3s ease;
 }
-.lang-selector:hover {
-  background: rgba(255, 255, 255, 0.1);
+.dropdown-link small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
 }
-.lang-selector:hover .chevron {
-  transform: translateY(2px);
+.dropdown-link > svg {
+  margin-left: auto;
+  color: var(--text-muted);
 }
-.chevron {
-  transition: transform 0.3s ease;
-  margin-top: 2px;
-}
-.hamburger-btn {
+.my-tickets {
   display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.my-tickets:hover {
+  color: var(--primary);
+}
+.organizer-link {
+  min-height: 40px;
+  padding: 9px 15px;
+  font-size: 12px;
+}
+.mobile-toggle {
+  display: none;
+  border: 1px solid var(--border-color);
+  background: #fff;
+  color: var(--text-main);
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-  color: var(--text-white, #fff);
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.hamburger-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: scale(1.05);
+@media (max-width: 1100px) {
+  .navbar-container {
+    gap: 35px;
+    padding-inline: 28px;
+  }
+  .nav-links {
+    gap: 20px;
+  }
+  .nav-actions {
+    gap: 16px;
+  }
 }
 @media (max-width: 900px) {
-  .nav-menu {
-    gap: 1rem;
+  .navbar-container {
+    min-height: 72px;
+    padding-inline: 22px;
+    justify-content: space-between;
   }
-}
-@media (max-width: 768px) {
-  .nav-menu {
-    display: none;
+  .mobile-toggle {
+    display: flex;
   }
-  .lang-selector {
+  .nav-content {
     display: none;
+    max-height: calc(100dvh - 72px);
+    overflow-y: auto;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    padding: 20px 24px 24px;
+    background: #fff;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+  }
+  .nav-content.is-open,
+  .nav-links {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 7px;
+  }
+  .nav-links,
+  .nav-actions {
+    width: 100%;
+  }
+  .nav-link {
+    width: 100%;
+    min-height: 42px;
+  }
+  .nav-actions {
+    border-top: 1px solid var(--border-color);
+    padding-top: 18px;
+    justify-content: space-between;
+  }
+  .dropdown-menu {
+    position: static;
+    width: 100%;
+    box-shadow: none;
+    background: var(--page-bg);
+    margin-bottom: 8px;
   }
 }
 </style>

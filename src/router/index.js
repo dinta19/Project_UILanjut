@@ -33,6 +33,12 @@ const routes = [
             meta: { breadcrumb: 'Event List' }
           },
           {
+            path: 'public-api',
+            name: 'public-api',
+            component: () => import('@/views/PublicApiExplorer.vue'),
+            meta: { breadcrumb: 'Global Feed (REST API)' }
+          },
+          {
             path: 'events/:id',
             name: 'event-detail',
             component: () => import('@/views/EventDetail.vue'),

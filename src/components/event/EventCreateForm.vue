@@ -3,9 +3,15 @@ import { reactive, ref } from 'vue';
 import AppCard from '@/components/ui/AppCard.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 
+defineProps({
+  submitting: {
+    type: Boolean,
+    default: false
+  }
+});
+
 const emit = defineEmits(['submit', 'cancel']);
 
-// STATE FORMULIR CREATE EVENT
 const form = reactive({
   title: '',
   cat: 'Workshop',
@@ -16,28 +22,81 @@ const form = reactive({
   desc: ''
 });
 
+const errors = reactive({
+  title: '',
+  date: '',
+  loc: '',
+  quota: '',
+  desc: ''
+});
+
 const errorMessage = ref('');
 const successMessage = ref('');
 
-// Format helper to convert YYYY-MM-DDTHH:mm into "Nov 25, 2026 • 10:00 AM"
-const formatEventDate = (dt) => {
-  if (!dt) return '';
-  const dateObj = new Date(dt);
-  if (isNaN(dateObj.getTime())) return dt;
-  const datePart = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-  const timePart = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+const formatEventDate = (dateTime) => {
+  if (!dateTime) return '';
+  const dateObject = new Date(dateTime);
+  if (Number.isNaN(dateObject.getTime())) return dateTime;
+
+  const datePart = dateObject.toLocaleDateString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric'
+  });
+  const timePart = dateObject.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
   return `${datePart} • ${timePart}`;
 };
 
-// HANDLER SUBMIT FORM CREATE EVENT
+const validateField = (field) => {
+  switch (field) {
+    case 'title':
+      if (!form.title.trim()) {
+        errors.title = 'Event title is required.';
+      } else if (form.title.trim().length < 3) {
+        errors.title = 'Event title must be at least 3 characters.';
+      } else {
+        errors.title = '';
+      }
+      break;
+    case 'date':
+      errors.date = form.date ? '' : 'Event date and time is required.';
+      break;
+    case 'loc':
+      errors.loc = form.loc.trim() ? '' : 'Event location is required.';
+      break;
+    case 'quota':
+      errors.quota = Number(form.quota) >= 1 ? '' : 'Quota must be at least 1 attendee.';
+      break;
+    case 'desc':
+      if (!form.desc.trim()) {
+        errors.desc = 'Event description is required.';
+      } else if (form.desc.trim().length < 10) {
+        errors.desc = 'Please write at least 10 characters for the description.';
+      } else {
+        errors.desc = '';
+      }
+      break;
+  }
+};
+
+const validateAll = () => {
+  ['title', 'date', 'loc', 'quota', 'desc'].forEach(validateField);
+  return Object.values(errors).every((fieldError) => !fieldError);
+};
+
 const handleSubmitEvent = () => {
-  // Validate Empty Input
-  if (!form.title.trim() || !form.date || !form.loc.trim() || !form.desc.trim()) {
-    errorMessage.value = 'Please fill in all required fields before publishing the event!';
+  if (!validateAll()) {
+    errorMessage.value = 'Please correct the highlighted fields before publishing the event.';
     successMessage.value = '';
     return;
   }
 
+  errorMessage.value = '';
+  successMessage.value = '';
   emit('submit', {
     title: form.title,
     cat: form.cat,
@@ -47,22 +106,33 @@ const handleSubmitEvent = () => {
     price: form.price,
     desc: form.desc
   });
+};
 
-  // Reset Form
+const resetForm = ({ successful = false } = {}) => {
   form.title = '';
   form.date = '';
   form.loc = '';
   form.quota = 100;
   form.price = 'Free';
   form.desc = '';
-  errorMessage.value = '';
-  successMessage.value = 'Event published successfully and is now live!';
 
-  // Clear success notification after 1 second
-  setTimeout(() => {
-    successMessage.value = '';
-  }, 1000);
+  Object.keys(errors).forEach((field) => {
+    errors[field] = '';
+  });
+
+  errorMessage.value = '';
+  successMessage.value = successful
+    ? 'Event published successfully and is now live!'
+    : '';
+
+  if (successful) {
+    setTimeout(() => {
+      successMessage.value = '';
+    }, 1000);
+  }
 };
+
+defineExpose({ resetForm });
 </script>
 
 <template>
@@ -77,15 +147,22 @@ const handleSubmitEvent = () => {
       ✨ {{ successMessage }}
     </div>
 
-    <form @submit.prevent="handleSubmitEvent" class="event-form">
+    <form @submit.prevent="handleSubmitEvent" class="event-form" novalidate>
       <div class="form-group">
-        <label>Event Title *</label>
-        <input v-model="form.title" type="text" placeholder="e.g. Modern UI/UX Masterclass" class="form-input" />
+        <label>Event Title <span class="required">*</span></label>
+        <input
+          v-model="form.title"
+          type="text"
+          placeholder="e.g. Modern UI/UX Masterclass"
+          :class="['form-input', { 'input-error': errors.title }]"
+          @input="validateField('title')"
+        />
+        <span v-if="errors.title" class="field-error">{{ errors.title }}</span>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label>Event Category *</label>
+          <label>Event Category <span class="required">*</span></label>
           <select v-model="form.cat" class="form-input">
             <option value="Workshop">Workshop</option>
             <option value="Meetup">Meetup</option>
@@ -96,33 +173,61 @@ const handleSubmitEvent = () => {
         </div>
 
         <div class="form-group">
-          <label>Date & Time *</label>
-          <input v-model="form.date" type="datetime-local" class="form-input" />
+          <label>Date & Time <span class="required">*</span></label>
+          <input
+            v-model="form.date"
+            type="datetime-local"
+            :class="['form-input', { 'input-error': errors.date }]"
+            @change="validateField('date')"
+          />
+          <span v-if="errors.date" class="field-error">{{ errors.date }}</span>
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label>Event Location *</label>
-          <input v-model="form.loc" type="text" placeholder="e.g. Innovation Center, Jakarta" class="form-input" />
+          <label>Event Location <span class="required">*</span></label>
+          <input
+            v-model="form.loc"
+            type="text"
+            placeholder="e.g. Innovation Center, Jakarta"
+            :class="['form-input', { 'input-error': errors.loc }]"
+            @input="validateField('loc')"
+          />
+          <span v-if="errors.loc" class="field-error">{{ errors.loc }}</span>
         </div>
 
         <div class="form-group">
           <label>Attendee Quota</label>
-          <input v-model.number="form.quota" type="number" min="10" placeholder="100" class="form-input" />
+          <input
+            v-model.number="form.quota"
+            type="number"
+            min="1"
+            placeholder="100"
+            :class="['form-input', { 'input-error': errors.quota }]"
+            @input="validateField('quota')"
+          />
+          <span v-if="errors.quota" class="field-error">{{ errors.quota }}</span>
         </div>
       </div>
 
       <div class="form-group">
-        <label>Event Description *</label>
-        <textarea v-model="form.desc" rows="4" placeholder="Describe the agenda, speakers, and key takeaways..." class="form-input"></textarea>
+        <label>Event Description <span class="required">*</span></label>
+        <textarea
+          v-model="form.desc"
+          rows="4"
+          placeholder="Describe the agenda, speakers, and key takeaways..."
+          :class="['form-input', { 'input-error': errors.desc }]"
+          @input="validateField('desc')"
+        ></textarea>
+        <span v-if="errors.desc" class="field-error">{{ errors.desc }}</span>
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn-secondary-action" @click="emit('cancel')">
+        <button type="button" class="btn-secondary-action" :disabled="submitting" @click="emit('cancel')">
           Cancel
         </button>
-        <AppButton variant="primary" type="submit">
+        <AppButton variant="primary" type="submit" :loading="submitting">
           🚀 Publish Event Now
         </AppButton>
       </div>
@@ -145,6 +250,10 @@ const handleSubmitEvent = () => {
 .form-subtitle {
   color: var(--text-muted);
   margin-bottom: var(--space-6);
+}
+
+.required {
+  color: #dc2626;
 }
 
 .alert-box {
@@ -197,15 +306,38 @@ const handleSubmitEvent = () => {
   border-radius: 8px;
   font-size: 0.95rem;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
   background: white;
   box-sizing: border-box;
   width: 100%;
 }
 
+textarea.form-input {
+  resize: vertical;
+  line-height: 1.5;
+}
+
 .form-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(102, 68, 255, 0.15);
+}
+
+.input-error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.input-error:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgb(239 68 68 / 20%);
+}
+
+.field-error {
+  margin-top: 2px;
+  color: #dc2626;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.3;
 }
 
 .form-actions {
@@ -227,7 +359,7 @@ const handleSubmitEvent = () => {
   color: var(--text-muted);
 }
 
-.btn-secondary-action:hover {
+.btn-secondary-action:hover:not(:disabled) {
   background: #e9ecef;
   color: var(--text-main);
 }

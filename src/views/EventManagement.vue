@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useEvents } from '@/composables/useEvents';
 import AppModal from '@/components/ui/AppModal.vue';
@@ -13,7 +13,8 @@ const {
   completedEvents,
   createEvent,
   completeEvent,
-  deleteEvent
+  deleteEvent,
+  fetchEvents
 } = useEvents();
 
 // KONDISI TAB AKTIF: 'active' | 'create' | 'completed'
@@ -23,6 +24,13 @@ const currentTab = ref('active');
 const isModalOpen = ref(false);
 const modalAction = ref('complete'); // 'complete' | 'delete'
 const selectedEvent = ref(null);
+const isProcessingAction = ref(false);
+const createFormRef = ref(null);
+const isSubmitting = ref(false);
+
+onMounted(() => {
+  fetchEvents();
+});
 
 const handleOpenCompleteModal = (event) => {
   selectedEvent.value = event;
@@ -36,15 +44,22 @@ const handleOpenDeleteModal = (event) => {
   isModalOpen.value = true;
 };
 
-const handleConfirmModal = () => {
-  if (selectedEvent.value) {
-    if (modalAction.value === 'complete') {
-      completeEvent(selectedEvent.value.id);
-    } else if (modalAction.value === 'delete') {
-      deleteEvent(selectedEvent.value.id);
+const handleConfirmModal = async () => {
+  if (selectedEvent.value && !isProcessingAction.value) {
+    isProcessingAction.value = true;
+    try {
+      if (modalAction.value === 'complete') {
+        await completeEvent(selectedEvent.value.id);
+      } else if (modalAction.value === 'delete') {
+        await deleteEvent(selectedEvent.value.id);
+      }
+    } catch (requestError) {
+      window.alert(requestError.message || 'The event action could not be completed.');
+    } finally {
+      isProcessingAction.value = false;
+      isModalOpen.value = false;
+      selectedEvent.value = null;
     }
-    isModalOpen.value = false;
-    selectedEvent.value = null;
   }
 };
 
@@ -54,11 +69,20 @@ const handleCancelModal = () => {
 };
 
 // HANDLER EVENT DIBUAT DARI EventCreateForm
-const handleCreateEvent = (eventData) => {
-  createEvent(eventData);
-  setTimeout(() => {
+const handleCreateEvent = async (eventData) => {
+  if (isSubmitting.value) return;
+
+  isSubmitting.value = true;
+  try {
+    await createEvent(eventData);
+    createFormRef.value?.resetForm({ successful: true });
+    await new Promise((resolve) => setTimeout(resolve, 800));
     currentTab.value = 'active';
-  }, 1000);
+  } catch (requestError) {
+    window.alert(requestError.message || 'Failed to publish the event to the server.');
+  } finally {
+    isSubmitting.value = false;
+  }
 };
 </script>
 
@@ -121,6 +145,8 @@ const handleCreateEvent = (eventData) => {
     <!-- TAB 2: CREATE EVENT FORM -->
     <section v-if="currentTab === 'create'" class="tab-pane">
       <EventCreateForm
+        ref="createFormRef"
+        :submitting="isSubmitting"
         @submit="handleCreateEvent"
         @cancel="currentTab = 'active'"
       />

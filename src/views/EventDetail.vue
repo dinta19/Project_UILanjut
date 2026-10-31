@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useEvents } from '@/composables/useEvents';
 import AppButton from '@/components/ui/AppButton.vue';
@@ -7,7 +7,7 @@ import AppCard from '@/components/ui/AppCard.vue';
 
 const route = useRoute();
 const router = useRouter();
-const { getEventById, isUserRegistered } = useEvents();
+const { getEventById, isUserRegistered, fetchEventById, loading, error } = useEvents();
 
 // MENGAMBIL DATA EVENT DINAMIS DARI STATE BERDASARKAN ID DI URL
 const event = computed(() => getEventById(route.params.id));
@@ -15,6 +15,12 @@ const event = computed(() => getEventById(route.params.id));
 // CEK APAKAH PENGGUNA SUDAH TERDAFTAR DI EVENT INI
 const isRegistered = computed(() => {
   return event.value ? isUserRegistered(event.value.id) : false;
+});
+
+onMounted(async () => {
+  if (!event.value) {
+    await fetchEventById(route.params.id);
+  }
 });
 </script>
 
@@ -24,8 +30,14 @@ const isRegistered = computed(() => {
       &larr; Back to Events
     </button>
 
+    <!-- KONDISI SAAT DETAIL SEDANG DIAMBIL DARI SERVER -->
+    <div v-if="loading" class="detail-header detail-loading" role="status" aria-live="polite">
+      <span class="detail-spinner" aria-hidden="true"></span>
+      <p>Loading event details from the server...</p>
+    </div>
+
     <!-- KONDISI JIKA EVENT DITEMUKAN -->
-    <div v-if="event" class="detail-container">
+    <div v-else-if="event" class="detail-container">
       <div class="detail-header">
         <div class="header-tags">
           <span class="event-tag">{{ event.cat }}</span>
@@ -130,7 +142,7 @@ const isRegistered = computed(() => {
     <!-- EMPTY STATE IF ID NOT FOUND -->
     <div v-else class="not-found-card">
       <h2>404 - Event Not Found</h2>
-      <p>The event you are looking for is unavailable or has been removed by the organizer.</p>
+      <p>{{ error || 'The event you are looking for is unavailable or has been removed by the organizer.' }}</p>
       <AppButton variant="primary" @click="router.push('/browse/events')">
         Back to Event Catalog
       </AppButton>
@@ -139,6 +151,34 @@ const isRegistered = computed(() => {
 </template>
 
 <style scoped>
+.detail-loading {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-3);
+  color: var(--text-muted);
+}
+
+.detail-loading p {
+  margin: 0;
+  font-weight: 500;
+}
+
+.detail-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #ded8f3;
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: detail-spin 0.8s linear infinite;
+}
+
+@keyframes detail-spin {
+  to { transform: rotate(360deg); }
+}
+
 .btn-back {
   background: none;
   border: none;

@@ -1,57 +1,52 @@
+<script setup>
+defineProps({
+  categories: { type: Array, required: true },
+  modelValue: { type: String, default: "All" },
+});
+defineEmits(["update:modelValue"]);
+</script>
 <template>
-  <div class="category-filter">
+  <div class="category-filter" role="group" aria-label="Filter event category">
     <button
       v-for="cat in categories"
       :key="cat"
       :class="['filter-btn', { active: modelValue === cat }]"
+      :aria-pressed="modelValue === cat"
       @click="$emit('update:modelValue', cat)"
     >
-      {{ cat }}
+      {{ cat === "All" ? "All events" : cat }}
     </button>
   </div>
 </template>
-
-<script setup>
-defineProps({
-  categories: {
-    type: Array,
-    required: true
-  },
-  modelValue: {
-    type: String,
-    default: 'All'
-  }
-});
-defineEmits(['update:modelValue']);
-</script>
-
 <style scoped>
 .category-filter {
   display: flex;
-  gap: var(--space-2);
+  gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: var(--space-6);
 }
-
 .filter-btn {
-  background: var(--bg-light);
+  background: white;
   border: 1px solid var(--border-color);
-  padding: var(--space-2) var(--space-4);
-  border-radius: 50px;
-  cursor: pointer;
+  padding: 9px 17px;
+  border-radius: 9px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
-  transition: all 0.2s;
 }
-
 .filter-btn:hover {
-  border-color: var(--primary);
+  border-color: #c9c0e5;
   color: var(--primary);
+  background: var(--primary-soft);
 }
-
 .filter-btn.active {
-  background: var(--primary);
+  background: var(--text-main);
+  border-color: var(--text-main);
   color: white;
-  border-color: var(--primary);
+}
+@media (max-width: 480px) {
+  .filter-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
 }
 </style>

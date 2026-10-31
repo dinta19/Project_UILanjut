@@ -11,7 +11,9 @@ const { userRegistrations, cancelRegistration, getEventById, events } = useEvent
 
 // HANYA MENAMPILKAN PENDAFTARAN DARI EVENT YANG MASIH ADA DI SISTEM
 const activeRegistrations = computed(() => {
-  return userRegistrations.value.filter(r => events.value.some(e => e.id === r.eventId));
+  return userRegistrations.value.filter((registration) =>
+    events.value.some((event) => String(event.id) === String(registration.eventId))
+  );
 });
 
 // MEMERIKSA STATUS SELESAI EVENT DARI ORGANIZER DASHBOARD SECARA REAKTIF

@@ -1,20 +1,46 @@
 import { ref, computed, watch } from 'vue';
 
-// DATA AWAL (Initial State): Dimulai dari array kosong untuk menguji Empty State
-const defaultEvents = [];
-
 // STORAGE KEYS
 const EVENTS_STORAGE_KEY = 'gatherly_events';
 const REGISTRATIONS_STORAGE_KEY = 'gatherly_user_registrations';
 
+// REST API CONFIGURATION
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  return envUrl ? envUrl.trim().replace(/\/+$/, '') : '';
+};
+
+const normalizeEvent = (event) => ({
+  ...event,
+  id: String(event.id),
+  title: event.title || '',
+  cat: event.cat || '',
+  date: event.date || '',
+  loc: event.loc || '',
+  quota: Number(event.quota) || 0,
+  desc: event.desc || '',
+  done: event.done === true || event.done === 'true'
+});
+
+const readStoredArray = (key) => {
+  try {
+    const storedValue = localStorage.getItem(key);
+    const parsedValue = storedValue ? JSON.parse(storedValue) : [];
+    return Array.isArray(parsedValue) ? parsedValue : [];
+  } catch {
+    return [];
+  }
+};
+
 // SINGLE SOURCE OF TRUTH (Module-Level Singleton)
-const savedData = localStorage.getItem(EVENTS_STORAGE_KEY);
-const events = ref(savedData ? JSON.parse(savedData) : defaultEvents);
+const events = ref(readStoredArray(EVENTS_STORAGE_KEY).map(normalizeEvent));
+const userRegistrations = ref(readStoredArray(REGISTRATIONS_STORAGE_KEY));
 
-const savedRegs = localStorage.getItem(REGISTRATIONS_STORAGE_KEY);
-const userRegistrations = ref(savedRegs ? JSON.parse(savedRegs) : []);
+// ASYNCHRONOUS NETWORK STATES (MODUL 6)
+const loading = ref(false);
+const error = ref(null);
 
-// WATCHERS (Side Effect: Sinkronisasi ke LocalStorage)
+// WATCHERS (LocalStorage tetap dipakai sebagai cache dan penyimpanan tiket pengguna)
 watch(
   events,
   (newEvents) => {
@@ -25,69 +51,212 @@ watch(
 
 watch(
   userRegistrations,
-  (newRegs) => {
-    localStorage.setItem(REGISTRATIONS_STORAGE_KEY, JSON.stringify(newRegs));
+  (newRegistrations) => {
+    localStorage.setItem(REGISTRATIONS_STORAGE_KEY, JSON.stringify(newRegistrations));
   },
   { deep: true }
 );
 
 export function useEvents() {
-  // DERIVED STATE (Dihitung otomatis menggunakan computed)
+  // DERIVED STATE
   const totalEvents = computed(() => events.value.length);
-  const activeEvents = computed(() => events.value.filter(e => !e.done));
-  const completedEvents = computed(() => events.value.filter(e => e.done));
+  const activeEvents = computed(() => events.value.filter((event) => !event.done));
+  const completedEvents = computed(() => events.value.filter((event) => event.done));
   const totalRegistrations = computed(() => userRegistrations.value.length);
 
-  // MUTASI STATE: TAMBAH DATA EVENT (Create)
-  const createEvent = (eventData) => {
-    const cleanLoc = eventData.loc.replace(/^[📍\s]+/, '').trim();
-    const newEvent = {
-      id: Date.now(),
+  // HTTP GET: mengambil seluruh data acara dari REST API.
+  const fetchEvents = async () => {
+    const baseUrl = getApiBaseUrl();
+
+    // Menjaga fitur lama tetap berfungsi sebelum endpoint MockAPI diisi.
+    if (!baseUrl) {
+      error.value = null;
+      return events.value;
+    }
+
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await fetch(`${baseUrl}/events`);
+      if (!response.ok) {
+        throw new Error(`Failed to load events (HTTP ${response.status}).`);
+      }
+
+      const data = await response.json();
+      events.value = Array.isArray(data) ? data.map(normalizeEvent) : [];
+      return events.value;
+    } catch (requestError) {
+      error.value = requestError.message || 'Unable to connect to the event server.';
+      return null;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  // HTTP GET BY ID: mengambil detail acara saat URL detail dibuka langsung.
+  const fetchEventById = async (id) => {
+    if (!id) return null;
+
+    const stringId = String(id);
+    const existingEvent = events.value.find((event) => String(event.id) === stringId);
+    if (existingEvent) return existingEvent;
+
+    const baseUrl = getApiBaseUrl();
+    if (!baseUrl) return null;
+
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await fetch(`${baseUrl}/events/${stringId}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('This event was not found on the server.');
+        }
+        throw new Error(`Failed to load event details (HTTP ${response.status}).`);
+      }
+
+      const eventData = normalizeEvent(await response.json());
+      if (!events.value.some((event) => String(event.id) === eventData.id)) {
+        events.value.push(eventData);
+      }
+      return eventData;
+    } catch (requestError) {
+      error.value = requestError.message || 'Unable to load this event.';
+      return null;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  // HTTP POST: membuat acara baru pada REST API.
+  const createEvent = async (eventData) => {
+    loading.value = true;
+    error.value = null;
+
+    const cleanLocation = (eventData.loc || '').replace(/^[📍\s]+/u, '').trim();
+    const payload = {
       title: eventData.title.trim(),
-      date: eventData.date,
-      loc: cleanLoc,
       cat: eventData.cat,
+      date: eventData.date,
+      loc: cleanLocation,
       quota: Number(eventData.quota) || 100,
+      price: eventData.price || 'Free',
       desc: eventData.desc.trim(),
       done: false
     };
-    events.value.unshift(newEvent);
-    return newEvent;
+
+    const baseUrl = getApiBaseUrl();
+
+    try {
+      if (baseUrl) {
+        const response = await fetch(`${baseUrl}/events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to publish the event (HTTP ${response.status}).`);
+        }
+
+        const createdEvent = normalizeEvent(await response.json());
+        events.value.unshift(createdEvent);
+        return createdEvent;
+      }
+
+      // Fallback lokal mempertahankan perilaku project sebelum endpoint dikonfigurasi.
+      const localEvent = normalizeEvent({ ...payload, id: Date.now() });
+      events.value.unshift(localEvent);
+      return localEvent;
+    } catch (requestError) {
+      error.value = requestError.message || 'Unable to publish the event.';
+      throw requestError;
+    } finally {
+      loading.value = false;
+    }
   };
 
-  // MUTASI STATE: UBAH STATUS (Toggle/Mark as Completed)
-  const completeEvent = (id) => {
-    const target = events.value.find(e => e.id === Number(id));
-    if (target) {
+  // HTTP DELETE: menghapus acara dari server dan tiket lokal yang terkait.
+  const deleteEvent = async (id) => {
+    const stringId = String(id);
+    const baseUrl = getApiBaseUrl();
+    loading.value = true;
+    error.value = null;
+
+    try {
+      if (baseUrl) {
+        const response = await fetch(`${baseUrl}/events/${stringId}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok && response.status !== 404) {
+          throw new Error(`Failed to delete the event (HTTP ${response.status}).`);
+        }
+      }
+
+      events.value = events.value.filter((event) => String(event.id) !== stringId);
+      userRegistrations.value = userRegistrations.value.filter(
+        (registration) => String(registration.eventId) !== stringId
+      );
+      return true;
+    } catch (requestError) {
+      error.value = requestError.message || 'Unable to delete the event.';
+      throw requestError;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  // HTTP PUT: menandai acara selesai pada server tanpa mengubah alur UI lama.
+  const completeEvent = async (id) => {
+    const stringId = String(id);
+    const target = events.value.find((event) => String(event.id) === stringId);
+    if (!target) return null;
+
+    const baseUrl = getApiBaseUrl();
+    loading.value = true;
+    error.value = null;
+
+    try {
+      if (baseUrl) {
+        const response = await fetch(`${baseUrl}/events/${stringId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ done: true })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to complete the event (HTTP ${response.status}).`);
+        }
+      }
+
       target.done = true;
+      return target;
+    } catch (requestError) {
+      error.value = requestError.message || 'Unable to update the event.';
+      throw requestError;
+    } finally {
+      loading.value = false;
     }
-  };
-
-  // MUTASI STATE: HAPUS DATA EVENT (Delete with Cascading Cleanup)
-  const deleteEvent = (id) => {
-    const numId = Number(id);
-    const index = events.value.findIndex(e => e.id === numId);
-    if (index !== -1) {
-      events.value.splice(index, 1);
-    }
-    // CASCADING DELETE: Hapus seluruh tiket pendaftaran yang terikat dengan event yang dimusnahkan
-    userRegistrations.value = userRegistrations.value.filter(r => r.eventId !== numId);
   };
 
   // PENCARIAN DATA BERDASARKAN ID
   const getEventById = (id) => {
-    return events.value.find(e => e.id === Number(id));
+    return events.value.find((event) => String(event.id) === String(id));
   };
 
-  // MUTASI STATE: PENDAFTARAN PESERTA (Register Attendee)
+  // MUTASI STATE: PENDAFTARAN PESERTA (tetap lokal sesuai fitur sebelumnya)
   const registerAttendee = (eventId, participantData) => {
-    const event = events.value.find(e => e.id === Number(eventId));
+    const stringId = String(eventId);
+    const event = events.value.find((item) => String(item.id) === stringId);
     if (!event || event.quota <= 0) return null;
 
     const bookingCode = 'GTH-' + Date.now().toString().slice(-4);
-    const regRecord = {
+    const registrationRecord = {
       id: Date.now(),
-      eventId: Number(eventId),
+      eventId: stringId,
       eventTitle: event.title,
       eventCat: event.cat,
       eventDate: event.date,
@@ -101,45 +270,40 @@ export function useEvents() {
       reason: participantData.reason.trim()
     };
 
-    // Kurangi kuota event secara reaktif
     event.quota = Math.max(0, event.quota - 1);
-
-    // Simpan pendaftaran ke riwayat registrasi pengguna
-    userRegistrations.value.unshift(regRecord);
-
-    return regRecord;
+    userRegistrations.value.unshift(registrationRecord);
+    return registrationRecord;
   };
 
-  // HELPER CEK STATUS PENDAFTARAN (Hanya bernilai true jika event masih aktif ada di sistem)
   const isUserRegistered = (eventId) => {
-    const numId = Number(eventId);
-    const eventExists = events.value.some(e => e.id === numId);
+    const stringId = String(eventId);
+    const eventExists = events.value.some((event) => String(event.id) === stringId);
     if (!eventExists) return false;
-    return userRegistrations.value.some(r => r.eventId === numId);
+    return userRegistrations.value.some(
+      (registration) => String(registration.eventId) === stringId
+    );
   };
 
-  // MENGAMBIL DATA TIKET BERDASARKAN EVENT ID
   const getRegistrationByEventId = (eventId) => {
-    return userRegistrations.value.find(r => r.eventId === Number(eventId));
+    return userRegistrations.value.find(
+      (registration) => String(registration.eventId) === String(eventId)
+    );
   };
 
-  // MUTASI STATE: PEMBATALAN PENDAFTARAN (Reset Registrasi Tertentu)
   const cancelRegistration = (eventId) => {
-    const regIdx = userRegistrations.value.findIndex(r => r.eventId === Number(eventId));
-    if (regIdx !== -1) {
-      userRegistrations.value.splice(regIdx, 1);
+    const stringId = String(eventId);
+    const registrationIndex = userRegistrations.value.findIndex(
+      (registration) => String(registration.eventId) === stringId
+    );
 
-      // Pulihkan kuota event masternya
-      const event = events.value.find(e => e.id === Number(eventId));
-      if (event) {
-        event.quota += 1;
-      }
-      return true;
-    }
-    return false;
+    if (registrationIndex === -1) return false;
+
+    userRegistrations.value.splice(registrationIndex, 1);
+    const event = events.value.find((item) => String(item.id) === stringId);
+    if (event) event.quota += 1;
+    return true;
   };
 
-  // FUNGSI RESET DATA PENGUJIAN PRAKTIKUM
   const clearAllEvents = () => {
     events.value = [];
     localStorage.removeItem(EVENTS_STORAGE_KEY);
@@ -152,14 +316,18 @@ export function useEvents() {
 
   return {
     events,
+    loading,
+    error,
     totalEvents,
     activeEvents,
     completedEvents,
     userRegistrations,
     totalRegistrations,
+    fetchEvents,
+    fetchEventById,
     createEvent,
-    completeEvent,
     deleteEvent,
+    completeEvent,
     getEventById,
     registerAttendee,
     isUserRegistered,
